@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"os"
 	"path"
 
@@ -92,16 +93,18 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 					Enable:           false,
 					HandshakeTimeout: 30,
 					ReadDeadline:     15,
-					Server:           "127.0.0.1:10001",
+					Server:           localIP + ":10001",
 					WriteDeadline:    15,
 				},
 				WebSocket: &EdgeHubWebSocket{
 					Enable:           true,
 					HandshakeTimeout: 30,
 					ReadDeadline:     15,
-					Server:           "127.0.0.1:10000",
+					Server:           localIP + ":10000",
 					WriteDeadline:    15,
 				},
+				HTTPServer: fmt.Sprintf("https://%s:10002", localIP),
+				Token:      "",
 			},
 			EventBus: &EventBus{
 				Enable:               true,
@@ -133,6 +136,16 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 				ListenInterface: EdgeMeshDefaultInterface,
 				ListenPort:      EdgeMeshDefaultListenPort,
 				SubNet:          EdgeMeshDefaultSubNet,
+			},
+			EdgeStream: &EdgeStream{
+				Enable:                  false,
+				TLSTunnelCAFile:         constants.DefaultCAFile,
+				TLSTunnelCertFile:       constants.DefaultCertFile,
+				TLSTunnelPrivateKeyFile: constants.DefaultKeyFile,
+				HandshakeTimeout:        30,
+				ReadDeadline:            15,
+				TunnelServer:            "127.0.0.1:10002",
+				WriteDeadline:           15,
 			},
 		},
 	}
@@ -180,9 +193,11 @@ func NewMinEdgeCoreConfig() *EdgeCoreConfig {
 					Enable:           true,
 					HandshakeTimeout: 30,
 					ReadDeadline:     15,
-					Server:           "127.0.0.1:10000",
+					Server:           localIP + ":10000",
 					WriteDeadline:    15,
 				},
+				HTTPServer: fmt.Sprintf("https://%s:10002", localIP),
+				Token:      "",
 			},
 			EventBus: &EventBus{
 				MqttQOS:            0,

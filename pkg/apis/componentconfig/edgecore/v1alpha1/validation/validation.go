@@ -39,6 +39,7 @@ func ValidateEdgeCoreConfiguration(c *v1alpha1.EdgeCoreConfig) field.ErrorList {
 	allErrs = append(allErrs, ValidateModuleDeviceTwin(*c.Modules.DeviceTwin)...)
 	allErrs = append(allErrs, ValidateModuleDBTest(*c.Modules.DBTest)...)
 	allErrs = append(allErrs, ValidateModuleEdgeMesh(*c.Modules.EdgeMesh)...)
+	allErrs = append(allErrs, ValidateModuleEdgeStream(*c.Modules.EdgeStream)...)
 	return allErrs
 }
 
@@ -80,22 +81,7 @@ func ValidateModuleEdgeHub(h v1alpha1.EdgeHub) field.ErrorList {
 		return field.ErrorList{}
 	}
 	allErrs := field.ErrorList{}
-	if !utilvalidation.FileIsExist(h.TLSPrivateKeyFile) {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSPrivateKeyFile"),
-			h.TLSPrivateKeyFile, "TLSPrivateKeyFile not exist"))
-	}
-	if !utilvalidation.FileIsExist(h.TLSCertFile) {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSCertFile"),
-			h.TLSCertFile, "TLSCertFile not exist"))
-	}
 
-	// Comments out the steps to verify CA certificate
-	/*
-		if !utilvalidation.FileIsExist(h.TLSCAFile) {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("TLSCAFile"),
-				h.TLSCAFile, "TLSCAFile not exist"))
-		}
-	*/
 	if h.WebSocket.Enable == h.Quic.Enable {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("enable"),
 			h.Quic.Enable, "websocket.enable and quic.enable cannot be true and false at the same time"))
@@ -161,5 +147,26 @@ func ValidateModuleEdgeMesh(m v1alpha1.EdgeMesh) field.ErrorList {
 	}
 	// TODO check meshconfig @kadisi
 	allErrs := field.ErrorList{}
+	return allErrs
+}
+
+// ValidateModuleEdgeStream validates `m` and returns an errorList if it is invalid
+func ValidateModuleEdgeStream(m v1alpha1.EdgeStream) field.ErrorList {
+	if !m.Enable {
+		return field.ErrorList{}
+	}
+	allErrs := field.ErrorList{}
+	if !utilvalidation.FileIsExist(m.TLSTunnelCAFile) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSTunnelCAFile"),
+			m.TLSTunnelCAFile, "TLSTunnelCAFile file not exist"))
+	}
+	if !utilvalidation.FileIsExist(m.TLSTunnelCertFile) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSTunnelCertFile"),
+			m.TLSTunnelCertFile, "TLSTunnelCertFile file not exist"))
+	}
+	if !utilvalidation.FileIsExist(m.TLSTunnelPrivateKeyFile) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSTunnelPrivateKeyFile"),
+			m.TLSTunnelPrivateKeyFile, "TLSTunnelPrivateKeyFile file not exist"))
+	}
 	return allErrs
 }

@@ -1,11 +1,11 @@
 # Setup from KubeEdge Installer
 
-Keadm is used to install the cloud and edge components of kubeedge. It is not responsible for installing K8s and runtime, 
+Keadm is used to install the cloud and edge components of KubeEdge. It is not responsible for installing K8s and runtime, 
 so users must install a k8s master on cloud and runtime on edge first. Or use an existing cluster.
 
 Please refer [kubernetes-compatibility](https://github.com/kubeedge/kubeedge#kubernetes-compatibility) to get **Kubernetes compatibility** and determine what version of Kubernetes would be installed.
 
-Kubeedge interacts with the standard K8s API, so the K8s cluster can be installed with any tools, such as:
+KubeEdge interacts with the standard K8s API, so the K8s cluster can be installed with any tools, such as:
 - [Creating kubernetes cluster with kubeadm](<https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/>)
 - [Creating kubernetes cluster with minikube](<https://kubernetes.io/docs/setup/learning-environment/minikube/>)
 - [Creating kubernetes cluster with kind](<https://kubernetes.io/docs/setup/learning-environment/kind/>)
@@ -48,11 +48,12 @@ There are currently two ways to get keadm
 
 By default port '10000' in your cloudcore needs to be accessible for your edge nodes.
 
-`keadm init` will install cloudcore, generate the certs and install the CRDs. It also provide flag by which specific versions can be set.
+`keadm init` will install cloudcore, generate the certs and install the CRDs. It also provides a flag by which a specific version can be set.
 
-1. Execute `keadm init` : keadm needs super user rights (or root rights) to run successfully.
+1. Execute `keadm init`: keadm needs super user rights (or root rights) to run successfully.
 
     Command flags
+    
     The optional flags with this command are mentioned below
 
     ```shell
@@ -123,11 +124,11 @@ tar -xvzf certs.tgz
 
 ## Setup Edge Side (KubeEdge Worker Node)
 
-`keadm join` will install edgecore and mqtt. It also provide flag by which specific versions can be set.
+`keadm join` will install edgecore and mqtt. It also provides a flag by which a specific version can be set.
 
 Execute `keadm join <flags>`
 
- Command flags
+  Command flags
 
   The optional flags with this command are shown in below shell
 
@@ -161,7 +162,7 @@ Execute `keadm join <flags>`
   ```
 
 **IMPORTANT NOTE:** 
-1. For this command --cloudcore-ipport flag is a Mandatory flag
+1. For this command `--cloudcore-ipport` flag is a mandatory flag
 1. The KubeEdge version used in cloud and edge side should be same. 
 
  Examples:
@@ -177,6 +178,108 @@ Host has mosquit+ already installed and running. Hence skipping the installation
 ...
 KubeEdge edgecore is running, For logs visit:  /var/log/kubeedge/edgecore.log
 ```
+
+## Setup Edge Side with VM provisioning (KubeEdge Worker Node)
+### Requirement, restrictions
+1. Current phase supports only one runtime, either container or VM runtime in one cluster.
+1. Make sure no libvirt is running on the worker nodes.
+
+### Steps
+1. **Install CNI plugin:**
+	- Download CNI plugin release and extract it: 
+	
+	```
+	$ wget https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz 
+		
+	# Extract the tarball
+	$ mkdir cni
+	$ tar -zxvf v0.2.0.tar.gz -C cni
+		
+	$ mkdir -p /opt/cni/bin
+	$ cp ./cni/* /opt/cni/bin/
+	```
+
+	- Configure cni plugin
+
+	```
+	$ mkdir -p /etc/cni/net.d/ 
+		
+	$ cat >/etc/cni/net.d/bridge.conf <<EOF
+	{
+	  "cniVersion": "0.3.1",
+	  "name": "containerd-net",
+	  "type": "bridge",
+	  "bridge": "cni0",
+	  "isGateway": true,
+	  "ipMasq": true,
+	  "ipam": {
+	    "type": "host-local",
+	    "subnet": "10.88.0.0/16",
+	    "routes": [
+	      { "dst": "0.0.0.0/0" }
+	    ]
+	  }
+	}	
+	EOF
+	```
+ 
+1. **Setup VM runtime:** 
+ Use script [`hack/setup-vmruntime.sh`](/hack/setup-vmruntime.sh) to set up VM runtime. It makes use of Arktos Runtime release to start three containers:
+ 
+	 	vmruntime_vms
+		vmruntime_libvirt
+		vmruntime_virtlet
+
+
+1. **Start edgecore service and join the cluster:**
+ The step is similare to provision containers with specify `remote-runtime-endpoint`. 
+
+ Examples:
+
+ ```shell
+  keadm join --cloudcore-ipport=192.168.20.50:10000 -r remote --remote-runtime-endpoint=unix:///run/virtlet.sock
+ ```
+
+
+1. **Test create a VM workload: (optional)**
+ On the master node, create a sample yaml file `vm.yaml` as:
+ ```shell
+apiVersion: v1
+kind: Pod
+metadata:
+  name: testvm
+spec:
+  containers:
+  - name: testvm
+    image: download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img
+    imagePullPolicy: Always
+    resources:
+      limits:
+        cpu: "3"
+        memory: "200Mi"
+      requests:
+        cpu: "3"
+        memory: "200Mi"
+ ``` 
+
+Then use `kubectl create -f vm.yaml` to create VM pod on the edge node. You should see the workload on master:
+
+ ```shell
+On master:
+
+# kubectl get pods -o wide
+NAME     READY   STATUS    RESTARTS   AGE   IP           NODE          NOMINATED NODE   READINESS GATES
+testvm   1/1     Running   0          38s   10.88.0.18   testnodevm3   <none>           <none>
+ ``` 
+ 
+ On the edge worker node: either ssh into the VM instance or `virsh list` can verify the VM is created and running:
+ 
+ ```shell
+ Id    Name                           State
+----------------------------------------------------
+ 1     virtlet-10628888-2584-testvm   running
+ ``` 
+  
 
 ## Reset KubeEdge Master and Worker nodes
 

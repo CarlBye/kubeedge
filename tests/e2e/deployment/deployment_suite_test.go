@@ -44,22 +44,20 @@ func TestEdgecoreAppDeployment(t *testing.T) {
 		nodeName = "integration-node-" + utils.GetRandomString(10)
 		nodeSelector = "node-" + utils.GetRandomString(3)
 
-		//Generate Cerificates for Edge and Cloud nodes copy to respective folders
-		Expect(utils.GenerateCerts()).Should(BeNil())
-		//Do the neccessary config changes in Cloud and Edge nodes
+		//Do the necessary config changes in Cloud and Edge nodes
 		Expect(utils.DeploySetup(ctx, nodeName, "deployment")).Should(BeNil())
 		//Run ./cloudcore binary
 		Expect(utils.StartCloudCore()).Should(BeNil())
 		//Register the Edge Node to Master
 		Expect(utils.RegisterNodeToMaster(nodeName, ctx.Cfg.K8SMasterForKubeEdge+constants.NodeHandler, nodeSelector)).Should(BeNil())
 		//Run ./edgecore after node registration
-		Expect(utils.StartEdgeCore()).Should(BeNil())
+		Expect(utils.StartEdgeCore(ctx.Cfg.K8SMasterForKubeEdge, nodeName)).Should(BeNil())
 		//Check node successfully registered or not
 		Eventually(func() string {
 			status := utils.CheckNodeReadyStatus(ctx.Cfg.K8SMasterForKubeEdge+constants.NodeHandler, nodeName)
 			utils.Infof("Node Name: %v, Node Status: %v", nodeName, status)
 			return status
-		}, "60s", "4s").Should(Equal("Running"), "Node register to the k8s master is unsuccessfull !!")
+		}, "60s", "4s").Should(Equal("Running"), "Node register to the k8s master is unsuccessful !!")
 		err := utils.MqttConnect()
 		Expect(err).To(BeNil())
 	})
@@ -71,12 +69,12 @@ func TestEdgecoreAppDeployment(t *testing.T) {
 			statuscode := utils.CheckNodeDeleteStatus(ctx.Cfg.K8SMasterForKubeEdge+constants.NodeHandler, nodeName)
 			utils.Infof("Node Name: %v, Node Statuscode: %v", nodeName, statuscode)
 			return statuscode
-		}, "60s", "4s").Should(Equal(http.StatusNotFound), "Node register to the k8s master is unsuccessfull !!")
+		}, "60s", "4s").Should(Equal(http.StatusNotFound), "Node register to the k8s master is unsuccessful !!")
 
 		//Run the Cleanup steps to kill edgecore and cloudcore binaries
 		Expect(utils.CleanUp("deployment")).Should(BeNil())
 		//time.Sleep(2 * time.Second)
-		utils.Infof("Cleanup is Successfull !!")
+		utils.Infof("Cleanup is Successful !!")
 	})
 
 	RunSpecs(t, "kubeedge App Deploymet Suite")

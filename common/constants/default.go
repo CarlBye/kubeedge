@@ -7,10 +7,19 @@ import (
 )
 
 const (
-	DefaultConfigDir = "/etc/kubeedge/config/"
-	DefaultCAFile    = "/etc/kubeedge/ca/rootCA.crt"
-	DefaultCertFile  = "/etc/kubeedge/certs/edge.crt"
-	DefaultKeyFile   = "/etc/kubeedge/certs/edge.key"
+	DefaultConfigDir    = "/etc/kubeedge/config/"
+	DefaultCAFile       = "/etc/kubeedge/ca/rootCA.crt"
+	DefaultCAKeyFile    = "/etc/kubeedge/ca/rootCA.key"
+	DefaultCertFile     = "/etc/kubeedge/certs/server.crt"
+	DefaultKeyFile      = "/etc/kubeedge/certs/server.key"
+	DefaultEdgeCertFile = "/etc/kubeedge/certs/edge.crt"
+	DefaultEdgeKeyFile  = "/etc/kubeedge/certs/edge.key"
+	DefaultCADir        = "/etc/kubeedge/ca"
+	DefaultCertDir      = "/etc/kubeedge/certs"
+
+	DefaultStreamCAFile   = "/etc/kubeedge/ca/streamCA.crt"
+	DefaultStreamCertFile = "/etc/kubeedge/certs/stream.crt"
+	DefaultStreamKeyFile  = "/etc/kubeedge/certs/stream.key"
 )
 
 const (
@@ -127,4 +136,10 @@ const (
 const (
 	// TODO put all modulename and group name together @kadisi
 	DeviceTwinModuleName = "twin"
+)
+
+const (
+	// ServerPort is the default port for the edgecore server on each host machine.
+	// May be overridden by a flag at startup in the future.
+	ServerPort = 10350
 )

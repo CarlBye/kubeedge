@@ -148,7 +148,7 @@ var _ = Describe("Application deployment test in E2E scenario", func() {
 			utils.WaitforPodsRunning(ctx.Cfg.KubeConfigPath, podlist, 240*time.Second)
 			Eventually(func() bool {
 				return readWrittenData
-			}, "120s", "0.5s").ShouldNot(Equal(false), "Message is not recieved in expected time !!")
+			}, "120s", "0.5s").ShouldNot(Equal(false), "Message is not received in expected time !!")
 		})
 	})
 
@@ -241,13 +241,13 @@ var _ = Describe("Application deployment test in E2E scenario", func() {
 	})
 
 	// check whether watcher has performed its operation successfully.
-	Context("Test whether watcher has succesfully updated the twin state as desired", func() {
+	Context("Test whether watcher has successfully updated the twin state as desired", func() {
 		BeforeEach(func() {
 			var expectedWatchAttribute watcher.Watcher
 			// Create and publish scheduler run time data
 			watchAttribute := watcher.Attribute{Name: "io-data", Actions: []string{"IOData"}}
 			devTwinAtt := []watcher.Attribute{watchAttribute}
-			expectedWatchAttribute = watcher.Watcher{devTwinAtt}
+			expectedWatchAttribute = watcher.Watcher{DeviceTwinAttributes: devTwinAtt}
 			// Subscribing to topic where scheduler publishes the data
 			ClientOpts = helpers.HubClientInit(ctx.Cfg.MqttEndpoint, "bluetoothmapper", "", "")
 			Client = MQTT.NewClient(ClientOpts)

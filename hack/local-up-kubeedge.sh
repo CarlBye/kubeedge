@@ -42,7 +42,9 @@ function uninstall_kubeedge {
   [[ -n "${CLOUDCORE_PID-}" ]] && sudo kill "${CLOUDCORE_PID}" 2>/dev/null
 
   # kill the edgecore
-  [[ -n "${EDGECORE_PID-}" ]] && sudo kill "${EDGECORE_PID}" 2>/dev/null
+  if [[ -n "${EDGECORE_PID-}" ]]; then
+      sudo kill "${EDGECORE_PID}" 2>/dev/null
+  fi
 }
 
 # clean up
@@ -80,18 +82,11 @@ function build_edgecore {
   make -C "${KUBEEDGE_ROOT}" WHAT="edgecore"
 }
 
-function generate_certs {
-  # generate the certs used for cloud and edge communication
-  echo "generating the certs used for cloud and edge communication..."
-  ${KUBEEDGE_ROOT}/build/tools/certgen.sh genCertAndKey edge
-}
-
 function start_cloudcore {
   CLOUD_CONFIGFILE=${KUBEEDGE_ROOT}/_output/local/bin/cloudcore.yaml
   CLOUD_BIN=${KUBEEDGE_ROOT}/_output/local/bin/cloudcore
   ${CLOUD_BIN} --minconfig >  ${CLOUD_CONFIGFILE}
   sed -i "s|kubeConfig: .*|kubeConfig: ${KUBECONFIG}|g" ${CLOUD_CONFIGFILE}
-
   CLOUDCORE_LOG=${LOG_DIR}/cloudcore.log
   echo "start cloudcore..."
   nohup ${CLOUD_BIN} --config=${CLOUD_CONFIGFILE} > "${CLOUDCORE_LOG}" 2>&1 &
@@ -102,6 +97,10 @@ function start_edgecore {
   EDGE_CONFIGFILE=${KUBEEDGE_ROOT}/_output/local/bin/edgecore.yaml
   EDGE_BIN=${KUBEEDGE_ROOT}/_output/local/bin/edgecore
   ${EDGE_BIN} --minconfig >  ${EDGE_CONFIGFILE}
+
+  token=`kubectl get secret -nkubeedge tokensecret -o=jsonpath='{.data.tokendata}' | base64 -d`
+
+  sed -i "s|token: .*|token: ${token}|g" ${EDGE_CONFIGFILE}
   sed -i "s|hostnameOverride: .*|hostnameOverride: edge-node|g" ${EDGE_CONFIGFILE}
   EDGECORE_LOG=${LOG_DIR}/edgecore.log
 
@@ -147,11 +146,15 @@ check_control_plane_ready
 
 # edge side don't support kind cni now, delete kind cni plugin for workaround
 kubectl delete daemonset kindnet -nkube-system
+kubectl create ns kubeedge
 
 create_device_crd
 create_objectsync_crd
-generate_certs
+
 start_cloudcore
+
+sleep 2
+
 start_edgecore
 
 if [[ "${ENABLE_DAEMON}" = false ]]; then

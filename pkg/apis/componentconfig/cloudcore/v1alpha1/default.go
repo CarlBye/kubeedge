@@ -18,8 +18,11 @@ package v1alpha1
 
 import (
 	"path"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
+	componentbaseconfig "k8s.io/component-base/config"
 
 	"github.com/kubeedge/kubeedge/common/constants"
 	metaconfig "github.com/kubeedge/kubeedge/pkg/apis/componentconfig/meta/v1alpha1"
@@ -27,7 +30,9 @@ import (
 
 // NewDefaultCloudCoreConfig returns a full CloudCoreConfig object
 func NewDefaultCloudCoreConfig() *CloudCoreConfig {
-	return &CloudCoreConfig{
+	advertiseAddress, _ := utilnet.ChooseHostInterface()
+
+	c := &CloudCoreConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       Kind,
 			APIVersion: path.Join(GroupName, APIVersion),
@@ -45,9 +50,11 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 				KeepaliveInterval: 30,
 				NodeLimit:         10,
 				TLSCAFile:         constants.DefaultCAFile,
+				TLSCAKeyFile:      constants.DefaultCAKeyFile,
 				TLSCertFile:       constants.DefaultCertFile,
 				TLSPrivateKeyFile: constants.DefaultKeyFile,
 				WriteTimeout:      30,
+				AdvertiseAddress:  []string{advertiseAddress.String()},
 				Quic: &CloudHubQUIC{
 					Enable:             false,
 					Address:            "0.0.0.0",
@@ -63,6 +70,11 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 					Port:    10000,
 					Address: "0.0.0.0",
 				},
+				Https: &CloudHubHttps{
+					Enable:  true,
+					Port:    10002,
+					Address: "0.0.0.0",
+				},
 			},
 			EdgeController: &EdgeController{
 				Enable:              true,
@@ -70,12 +82,12 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 				Buffer: &EdgeControllerBuffer{
 					UpdatePodStatus:            constants.DefaultUpdatePodStatusBuffer,
 					UpdateNodeStatus:           constants.DefaultUpdateNodeStatusBuffer,
-					QueryConfigmap:             constants.DefaultQueryConfigMapBuffer,
+					QueryConfigMap:             constants.DefaultQueryConfigMapBuffer,
 					QuerySecret:                constants.DefaultQuerySecretBuffer,
 					QueryService:               constants.DefaultQueryServiceBuffer,
 					QueryEndpoints:             constants.DefaultQueryEndpointsBuffer,
 					PodEvent:                   constants.DefaultPodEventBuffer,
-					ConfigmapEvent:             constants.DefaultConfigMapEventBuffer,
+					ConfigMapEvent:             constants.DefaultConfigMapEventBuffer,
 					SecretEvent:                constants.DefaultSecretEventBuffer,
 					ServiceEvent:               constants.DefaultServiceEventBuffer,
 					EndpointsEvent:             constants.DefaultEndpointsEventBuffer,
@@ -94,7 +106,7 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 				Load: &EdgeControllerLoad{
 					UpdatePodStatusWorkers:            constants.DefaultUpdatePodStatusWorkers,
 					UpdateNodeStatusWorkers:           constants.DefaultUpdateNodeStatusWorkers,
-					QueryConfigmapWorkers:             constants.DefaultQueryConfigMapWorkers,
+					QueryConfigMapWorkers:             constants.DefaultQueryConfigMapWorkers,
 					QuerySecretWorkers:                constants.DefaultQuerySecretWorkers,
 					QueryServiceWorkers:               constants.DefaultQueryServiceWorkers,
 					QueryEndpointsWorkers:             constants.DefaultQueryEndpointsWorkers,
@@ -125,12 +137,35 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 			SyncController: &SyncController{
 				Enable: true,
 			},
+			CloudStream: &CloudStream{
+				Enable:                  false,
+				TLSTunnelCAFile:         constants.DefaultCAFile,
+				TLSTunnelCertFile:       constants.DefaultCertFile,
+				TLSTunnelPrivateKeyFile: constants.DefaultKeyFile,
+				TunnelPort:              10002,
+				TLSStreamCAFile:         constants.DefaultStreamCAFile,
+				TLSStreamCertFile:       constants.DefaultStreamCertFile,
+				TLSStreamPrivateKeyFile: constants.DefaultStreamKeyFile,
+				StreamPort:              10003,
+			},
+		},
+		LeaderElection: &componentbaseconfig.LeaderElectionConfiguration{
+			LeaderElect:       false,
+			LeaseDuration:     metav1.Duration{Duration: 15 * time.Second},
+			RenewDeadline:     metav1.Duration{Duration: 10 * time.Second},
+			RetryPeriod:       metav1.Duration{Duration: 2 * time.Second},
+			ResourceLock:      "endpointsleases",
+			ResourceNamespace: "kubeedge",
+			ResourceName:      "cloudcorelease",
 		},
 	}
+	return c
 }
 
 // NewMinCloudCoreConfig returns a min CloudCoreConfig object
 func NewMinCloudCoreConfig() *CloudCoreConfig {
+	advertiseAddress, _ := utilnet.ChooseHostInterface()
+
 	return &CloudCoreConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       Kind,
@@ -144,8 +179,10 @@ func NewMinCloudCoreConfig() *CloudCoreConfig {
 			CloudHub: &CloudHub{
 				NodeLimit:         10,
 				TLSCAFile:         constants.DefaultCAFile,
+				TLSCAKeyFile:      constants.DefaultCAKeyFile,
 				TLSCertFile:       constants.DefaultCertFile,
 				TLSPrivateKeyFile: constants.DefaultKeyFile,
+				AdvertiseAddress:  []string{advertiseAddress.String()},
 				UnixSocket: &CloudHubUnixSocket{
 					Enable:  true,
 					Address: "unix:///var/lib/kubeedge/kubeedge.sock",
@@ -155,7 +192,15 @@ func NewMinCloudCoreConfig() *CloudCoreConfig {
 					Port:    10000,
 					Address: "0.0.0.0",
 				},
+				Https: &CloudHubHttps{
+					Enable:  true,
+					Port:    10002,
+					Address: "0.0.0.0",
+				},
 			},
+		},
+		LeaderElection: &componentbaseconfig.LeaderElectionConfiguration{
+			LeaderElect: false,
 		},
 	}
 }

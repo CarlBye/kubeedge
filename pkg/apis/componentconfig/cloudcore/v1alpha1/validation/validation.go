@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	componentbaseconfig "k8s.io/component-base/config"
 
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/cloudcore/v1alpha1"
 	utilvalidation "github.com/kubeedge/kubeedge/pkg/util/validation"
@@ -36,6 +37,21 @@ func ValidateCloudCoreConfiguration(c *v1alpha1.CloudCoreConfig) field.ErrorList
 	allErrs = append(allErrs, ValidateModuleEdgeController(*c.Modules.EdgeController)...)
 	allErrs = append(allErrs, ValidateModuleDeviceController(*c.Modules.DeviceController)...)
 	allErrs = append(allErrs, ValidateModuleSyncController(*c.Modules.SyncController)...)
+	allErrs = append(allErrs, ValidateLeaderElectionConfiguration(*c.LeaderElection)...)
+	allErrs = append(allErrs, ValidateModuleCloudStream(*c.Modules.CloudStream)...)
+	return allErrs
+}
+
+//ValidateLeaderElectionConfiguration validates part `l` and returns an errorList if it is invalid, the rest will be validated at run time
+func ValidateLeaderElectionConfiguration(l componentbaseconfig.LeaderElectionConfiguration) field.ErrorList {
+	if !l.LeaderElect {
+		return field.ErrorList{}
+	}
+	allErrs := field.ErrorList{}
+	//TODO: Encapsulate namespace "kubeedge" into constants
+	if l.ResourceNamespace != "kubeedge" {
+		allErrs = append(allErrs, field.Required(field.NewPath("ResourceNamespace"), "resourceLock's namesapce must be kubeedge"))
+	}
 	return allErrs
 }
 
@@ -46,11 +62,17 @@ func ValidateModuleCloudHub(c v1alpha1.CloudHub) field.ErrorList {
 	}
 
 	allErrs := field.ErrorList{}
+	validHttpsPort := utilvalidation.IsValidPortNum(int(c.Https.Port))
 	validWPort := utilvalidation.IsValidPortNum(int(c.WebSocket.Port))
 	validAddress := utilvalidation.IsValidIP(c.WebSocket.Address)
 	validQPort := utilvalidation.IsValidPortNum(int(c.Quic.Port))
 	validQAddress := utilvalidation.IsValidIP(c.Quic.Address)
 
+	if len(validHttpsPort) > 0 {
+		for _, m := range validHttpsPort {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("port"), c.Https.Port, m))
+		}
+	}
 	if len(validWPort) > 0 {
 		for _, m := range validWPort {
 			allErrs = append(allErrs, field.Invalid(field.NewPath("port"), c.WebSocket.Port, m))
@@ -70,15 +92,6 @@ func ValidateModuleCloudHub(c v1alpha1.CloudHub) field.ErrorList {
 		for _, m := range validQAddress {
 			allErrs = append(allErrs, field.Invalid(field.NewPath("Address"), c.Quic.Address, m))
 		}
-	}
-	if !utilvalidation.FileIsExist(c.TLSPrivateKeyFile) {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSPrivateKeyFile"), c.TLSPrivateKeyFile, "TLSPrivateKeyFile not exist"))
-	}
-	if !utilvalidation.FileIsExist(c.TLSCertFile) {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSCertFile"), c.TLSCertFile, "TLSCertFile not exist"))
-	}
-	if !utilvalidation.FileIsExist(c.TLSCAFile) {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSCAFile"), c.TLSCAFile, "TLSCAFile not exist"))
 	}
 	if !strings.HasPrefix(strings.ToLower(c.UnixSocket.Address), "unix://") {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("address"),
@@ -124,6 +137,37 @@ func ValidateModuleSyncController(d v1alpha1.SyncController) field.ErrorList {
 	}
 
 	allErrs := field.ErrorList{}
+	return allErrs
+}
+
+// ValidateModuleCloudStream validates `d` and returns an errorList if it is invalid
+func ValidateModuleCloudStream(d v1alpha1.CloudStream) field.ErrorList {
+	if !d.Enable {
+		return field.ErrorList{}
+	}
+
+	allErrs := field.ErrorList{}
+
+	if !utilvalidation.FileIsExist(d.TLSTunnelPrivateKeyFile) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSTunnelPrivateKeyFile"), d.TLSTunnelPrivateKeyFile, "TLSTunnelPrivateKeyFile not exist"))
+	}
+	if !utilvalidation.FileIsExist(d.TLSTunnelCertFile) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSTunnelCertFile"), d.TLSTunnelCertFile, "TLSTunnelCertFile not exist"))
+	}
+	if !utilvalidation.FileIsExist(d.TLSTunnelCAFile) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSTunnelCAFile"), d.TLSTunnelCAFile, "TLSTunnelCAFile not exist"))
+	}
+
+	if !utilvalidation.FileIsExist(d.TLSStreamPrivateKeyFile) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSStreamPrivateKeyFile"), d.TLSStreamPrivateKeyFile, "TLSStreamPrivateKeyFile not exist"))
+	}
+	if !utilvalidation.FileIsExist(d.TLSStreamCertFile) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSStreamCertFile"), d.TLSStreamCertFile, "TLSStreamCertFile not exist"))
+	}
+	if !utilvalidation.FileIsExist(d.TLSStreamCAFile) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("TLSStreamCAFile"), d.TLSStreamCAFile, "TLSStreamCAFile not exist"))
+	}
+
 	return allErrs
 }
 
